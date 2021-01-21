@@ -57,36 +57,39 @@ expect.extend({
     }
 })
 
-
-test('checking for GUID',async()=>{
-    let guid=''
-    expect(checkingforGUID(guid)).toBe(false)
-    guid = uuidv4();
-
-    expect(checkingforGUID(guid)).toBe(true)
-
-    guid = "gggggggg-gggg-gGgG-GgGg-GGGGGGGGGGGG"
-    expect(checkingforGUID(guid)).toBe(false)
-
-})
-
-test('checking for apropriete generation of tokens',async()=>{
+describe('testing utility functions',()=>{
+    test('checking for GUID',async()=>{
+        let guid=''
+        expect(checkingforGUID(guid)).toBe(false)
+        guid = uuidv4();
     
-    const tokens = generateTokens(uuidv4())
-    console.log(tokens)
-    expect(tokens).toMatchObject({
-        AccessToken: expect.toBeValidJWT(secret),
-        RefreshToken: expect.toBeValidbase64(tokens.AccessToken)
+        expect(checkingforGUID(guid)).toBe(true)
+    
+        guid = "gggggggg-gggg-gGgG-GgGg-GGGGGGGGGGGG"
+        expect(checkingforGUID(guid)).toBe(false)
+    
+    })
+    
+    test('checking for apropriete generation of tokens',async()=>{
+        
+        const tokens = generateTokens(uuidv4())
+        console.log(tokens)
+        expect(tokens).toMatchObject({
+            AccessToken: expect.toBeValidJWT(secret),
+            RefreshToken: expect.toBeValidbase64(tokens.AccessToken)
+        })
+    })
+    
+    test('testing hashing of a given string (Refresh token)',()=>{
+    
+        const hashString = hashingString('hello, world')
+        const bull = bcrypt.compareSync('hello, world',hashString)
+        expect(bull).toBe(true)
     })
 })
 
-test.only('testing hashing of a given string (Refresh token)',()=>{
 
-    const hashString = hashingString('hello, world')
-    const bull = bcrypt.compareSync('hello, world',hashString)
-    expect(bull).toBe(true)
-})
-
+describe('testing with connection to the app',()=>{
 
 test('testing auth with INvalid GUID',async ()=>{
 
@@ -95,8 +98,6 @@ test('testing auth with INvalid GUID',async ()=>{
     expect(response.body).toBe('Your GUID is invalid')
     expect(response.statusCode).toBe(401);
 })
-
-
 
 
 test('testing auth with valid GUID',async ()=>{
@@ -110,4 +111,35 @@ test('testing auth with valid GUID',async ()=>{
     })
 
     expect(response.statusCode).toBe(200);
+})
+})
+
+const {MongoClient} = require('mongodb');
+
+describe('test for database',()=>{
+    let connection;
+    let db;
+
+    beforeAll(async () => {
+        connection = await MongoClient.connect("mongodb://127.0.0.1:3500/jestdb?", {
+          useNewUrlParser: true,
+          useUnifiedTopology: true
+        });
+        db = await connection.db();
+      });
+    
+    afterAll(async () => {
+        await db.collection('users').deleteMany({});
+        await connection.close();
+      });
+
+    test.only('should insert a doc into collection', async () => {
+        const users = db.collection('users');
+
+        const mockUser = {_id: 'some-user-id', name: 'John'};
+        await users.insertOne(mockUser);
+      
+        const insertedUser = await users.findOne({_id: 'some-user-id'});
+        expect(insertedUser).toEqual(mockUser);
+      });
 })
