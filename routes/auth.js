@@ -13,9 +13,6 @@ const middleware =(req,res,next)=>{
 const authorization = (req,res)=>{
     const tokens = generateTokens(req.body.guid)
 
-    // const accessToken=jwt.sign({guid:req.body.guid}, 'secret',{algorithm: 'HS512'})
-    // const refreshToken = jwt.sign({payload:accessToken.slice(accessToken.length-6,accessToken-1)},'secret')
- 
     res.json(tokens)
 }
  
