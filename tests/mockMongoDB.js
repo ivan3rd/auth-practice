@@ -4,8 +4,8 @@ const mongod = new MongoMemoryServer({
     instance:{
         port:3500,
         ip:'127.0.0.1',
-        dbName:'jestdb',
-         dbPath:'/tmp/mongo-mem-jestdb'
+        dbName:'jestdb'
+        //dbPath:'/tmp/mongo-mem-jestdb'
     }
 });
 

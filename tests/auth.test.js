@@ -115,31 +115,53 @@ test('testing auth with valid GUID',async ()=>{
 })
 
 const {MongoClient} = require('mongodb');
+const mongoose = require('mongoose')
 
-describe('test for database',()=>{
+
+describe('test for database',async ()=>{
     let connection;
     let db;
+    const schema = new mongoose.Schema({
+        name: String
+    })
+    const Model = mongoose.model('Kitten',schema)
 
-    beforeAll(async () => {
-        connection = await MongoClient.connect("mongodb://127.0.0.1:3500/jestdb?", {
-          useNewUrlParser: true,
-          useUnifiedTopology: true
-        });
-        db = await connection.db();
+    await beforeAll(async () => {
+        mongoose.connect('mongodb://127.0.0.1:3500/jestdb?', 
+        {useNewUrlParser: true, 
+        useUnifiedTopology: true});
+
+        db = mongoose.connection;
+        db.on('error', console.error.bind(console, 'connection error:'))
+        db.once('open',()=>{
+            console.log('Connection established')
+        })
+
       });
     
-    afterAll(async () => {
-        await db.collection('users').deleteMany({});
-        await connection.close();
+    await afterAll(async () => {
+        Model.deleteMany({})
+
+        mongoose.connection.close()
       });
 
-    test.only('should insert a doc into collection', async () => {
-        const users = db.collection('users');
 
-        const mockUser = {_id: 'some-user-id', name: 'John'};
-        await users.insertOne(mockUser);
-      
-        const insertedUser = await users.findOne({_id: 'some-user-id'});
-        expect(insertedUser).toEqual(mockUser);
+
+    await test.only('should insert a doc into collection', async () => {
+        const silent = new Model({ name: 'Silent'})
+        silent.save(async (err,silent)=>{
+            if(err) return console.log(err)
+            await console.log(`${silent.name} has been saved`)
+        })
+
+        const findModel = Model.findOne({name:'Silent'}, 'name'
+        ).exec();
+        const foundedModel= findModel
+        
+        expect(foundedModel.name).toBe(silent.name)
+
+        Model.remove({name:"Silent"})
+        foundedModel = await findModel
+        expect(foundedModel.name).not.toBe(silent.name)
       });
 })
