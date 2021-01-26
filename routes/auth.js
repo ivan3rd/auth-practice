@@ -1,6 +1,8 @@
 const checkingForGUID = require('./util/checkingForGUID')
 const generateTokens = require('./util/toGenerateTokens')
-const jwt = require('jsonwebtoken')
+const addingTODB = require('./util/addingToDB')
+const hashingString = require('./util/hashingString')
+
 
 const middleware =(req,res,next)=>{
     if(checkingForGUID(req.body.guid)){
@@ -13,8 +15,12 @@ const middleware =(req,res,next)=>{
     res.json('Something broke')
 }
 
-const authorization = (req,res)=>{
+const authorization =  (req,res)=>{
     const tokens = generateTokens(req.body.guid)
+
+    const hashedRT = hashingString(tokens.RefreshToken)
+
+    addingTODB(req.body.guid,hashedRT);
 
     res.json(tokens)
 }

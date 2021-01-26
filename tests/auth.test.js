@@ -58,6 +58,9 @@ expect.extend({
 })
 
 describe('testing utility functions',()=>{
+
+
+
     test('checking for GUID',async()=>{
         let guid=''
         expect(checkingforGUID(guid)).toBe(false)
@@ -73,7 +76,7 @@ describe('testing utility functions',()=>{
     test('checking for apropriete generation of tokens',async()=>{
         
         const tokens = generateTokens(uuidv4())
-        console.log(tokens)
+        
         expect(tokens).toMatchObject({
             AccessToken: expect.toBeValidJWT(secret),
             RefreshToken: expect.toBeValidbase64(tokens.AccessToken)
@@ -88,10 +91,33 @@ describe('testing utility functions',()=>{
     })
 })
 
+const mongoose = require('mongoose')
+const Model = require('../routes/forDB/models')
 
-describe('testing with connection to the app',()=>{
+describe('testing with connection to the app', ()=>{
+    let db;
 
-test('testing auth with INvalid GUID',async ()=>{
+    beforeAll(async ()=>{
+        await mongoose.connect('mongodb://127.0.0.1:3500/jestdb?', 
+        {useNewUrlParser: true, 
+        useUnifiedTopology: true});
+        
+        db = mongoose.connection;
+
+        db.on('error', console.error.bind(console, 'connection error:'))
+        db.once('open',()=>{
+            console.log('Connection established')
+        })
+    })
+
+    afterAll(async()=>{
+        await Model.deleteMany({})
+
+        await mongoose.connection.close()
+    })
+
+
+ test('testing auth with INvalid GUID',async ()=>{
 
     const response = await request(app).post('/getnewtokens')
     .send({guid:"gggggggg-gggg-gGgG-GgGg-GGGGGGGGGGGG"});
@@ -99,12 +125,28 @@ test('testing auth with INvalid GUID',async ()=>{
     expect(response.statusCode).toBe(401);
 })
 
+const guid = uuidv4();
+let response;
+test('testing auth with valid GUID', async()=>{
 
-test('testing auth with valid GUID',async ()=>{
+    response = await request(app).post('/getnewtokens')
+    .send({guid:guid});
 
-    const response = await request(app).post('/getnewtokens')
-    .send({guid:uuidv4()});
+    //database checking
+    const findModel = Model.findOne({guid:guid}, 'guid RefreshToken').exec();
 
+    const foundedModel = await findModel
+    console.log(foundedModel)
+    // console.log(response.body)
+    expect(foundedModel.guid).toBe(guid)
+    
+
+    const bull = bcrypt.compareSync(response.body.RefreshToken, foundedModel.RefreshToken)
+    // expect(foundedModel.RefreshToken).toBe(response.body.RefreshToken)
+    expect(bull).toBe(true)
+
+
+    //response checking
     expect(response.body).toMatchObject({
         AccessToken: expect.toBeValidJWT(secret),
         RefreshToken: expect.toBeValidbase64(response.body.AccessToken)
@@ -112,56 +154,22 @@ test('testing auth with valid GUID',async ()=>{
 
     expect(response.statusCode).toBe(200);
 })
-})
 
-const {MongoClient} = require('mongodb');
-const mongoose = require('mongoose')
-
-
-describe('test for database',async ()=>{
-    let connection;
-    let db;
-    const schema = new mongoose.Schema({
-        name: String
-    })
-    const Model = mongoose.model('Kitten',schema)
-
-    await beforeAll(async () => {
-        mongoose.connect('mongodb://127.0.0.1:3500/jestdb?', 
-        {useNewUrlParser: true, 
-        useUnifiedTopology: true});
-
-        db = mongoose.connection;
-        db.on('error', console.error.bind(console, 'connection error:'))
-        db.once('open',()=>{
-            console.log('Connection established')
-        })
-
-      });
-    
-    await afterAll(async () => {
-        Model.deleteMany({})
-
-        mongoose.connection.close()
-      });
-
-
-
-    await test.only('should insert a doc into collection', async () => {
-        const silent = new Model({ name: 'Silent'})
-        silent.save(async (err,silent)=>{
-            if(err) return console.log(err)
-            await console.log(`${silent.name} has been saved`)
-        })
-
-        const findModel = Model.findOne({name:'Silent'}, 'name'
-        ).exec();
-        const foundedModel= findModel
+    test('checking Refresh with recieved Refresh token',async ()=>{
+        const RefreshToken = response.body.RefreshToken
+  
+        const refresh = await request(app).post('/refreshtokens')
+        .send({RefreshToken});
         
-        expect(foundedModel.name).toBe(silent.name)
+        
 
-        Model.remove({name:"Silent"})
-        foundedModel = await findModel
-        expect(foundedModel.name).not.toBe(silent.name)
-      });
+        const bull = await bcrypt.compareSync(RefreshToken, refresh.body.HashedRT)
+        
+        expect(bull).toBe(true)
+
+        expect(refresh.statusCode).toBe(200)
+        expect(refresh.body.guid).toBe(guid)
+        expect(refresh.body.AccessToken).toBe(response.body.AccessToken)
+
+    })
 })
