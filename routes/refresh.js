@@ -1,29 +1,29 @@
-const hashingString = require("./util/hashingString");
-const Model = require('./forDB/models')
 const bcrypt=require('bcryptjs')
+const findingATKey = require('./util/findingKeyForATMap')
+const findToken=require('./util/findToken')
 
 async function refreshTokens(req,res) {
+    console.log(req.body.RefreshToken)
 
-    const HashedRT = hashingString(req.body.RefreshToken)
+    const guid = findToken(req.body.RefreshToken);
 
-    const findTokens = Model.find({},'guid RefreshToken').exec();
-    const foundTokens = await findTokens;
+    const key = findingATKey(req.body.RefreshToken)
+    console.log(key)
 
-    let guid
+    if(guid==undefined || key==""){
+        res.status(403)
+        res.json('Your Refresh token expired or invalid')
+    }
+    else{
+   
+        const AccessToken = accessTokenMap.get(key).AccessToken
+  
+        await res.json({
+            AccessToken: AccessToken,
+            RefreshToken: 'some refreshToken'
+        }) 
+    }
 
-    foundTokens.forEach((item,index,array)=>{
-        let bull = bcrypt.compareSync(req.body.RefreshToken, item.RefreshToken)
-        if(bull){
-            guid = item.guid
-        }
-    })
-    
-    //await console.log(findTokens)
-
-    await res.json({
-        guid:guid,
-        HashedRT: HashedRT
-    }) 
 }
 
 module.exports = {refreshTokens:refreshTokens};

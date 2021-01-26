@@ -11,6 +11,7 @@ const {v4:uuidv4} =require('uuid');
 
 const secret = process.env.SECRET;
 
+
 expect.extend({
     toBeValidJWT(received, secret){
         const decoded = jwt.verify(received, secret,{algorithm: 'HS512'});
@@ -57,9 +58,8 @@ expect.extend({
     }
 })
 
+
 describe('testing utility functions',()=>{
-
-
 
     test('checking for GUID',async()=>{
         let guid=''
@@ -136,7 +136,7 @@ test('testing auth with valid GUID', async()=>{
     const findModel = Model.findOne({guid:guid}, 'guid RefreshToken').exec();
 
     const foundedModel = await findModel
-    console.log(foundedModel)
+    // console.log(foundedModel)
     // console.log(response.body)
     expect(foundedModel.guid).toBe(guid)
     
@@ -155,20 +155,24 @@ test('testing auth with valid GUID', async()=>{
     expect(response.statusCode).toBe(200);
 })
 
+    test('checking /refreshtokens with invalid refresh tokens',async()=>{
+        const RefreshToken = 'someRandomStrings'
+
+        const refresh = await request(app).post('/refreshtokens')
+        .send({RefreshToken});
+
+        expect(refresh.statusCode).toBe(403)
+        expect(refresh.body).toBe('Your Refresh token expired or invalid')
+    })
+
     test('checking Refresh with recieved Refresh token',async ()=>{
         const RefreshToken = response.body.RefreshToken
   
         const refresh = await request(app).post('/refreshtokens')
         .send({RefreshToken});
         
-        
-
-        const bull = await bcrypt.compareSync(RefreshToken, refresh.body.HashedRT)
-        
-        expect(bull).toBe(true)
 
         expect(refresh.statusCode).toBe(200)
-        expect(refresh.body.guid).toBe(guid)
         expect(refresh.body.AccessToken).toBe(response.body.AccessToken)
 
     })
