@@ -1,29 +1,51 @@
 const bcrypt=require('bcryptjs')
 const findingATKey = require('./util/findingKeyForATMap')
 const findToken=require('./util/findToken')
+const generateTokens = require('./util/toGenerateTokens')
+const Model = require('./forDB/models')
+const hashingString = require('./util/hashingString')
 
-async function refreshTokens(req,res) {
-    console.log(req.body.RefreshToken)
+let guid;
+let key;
+async function checkingForRefreshTokens(req,res,next){
 
-    const guid = findToken(req.body.RefreshToken);
+    guid = await findToken(req.body.RefreshToken)
+    key = findingATKey(req.body.RefreshToken)
 
-    const key = findingATKey(req.body.RefreshToken)
-    console.log(key)
-
-    if(guid==undefined || key==""){
+    //checking if refreshToken exists in data base and also as
+    if(guid ==undefined || key==""){
         res.status(403)
         res.json('Your Refresh token expired or invalid')
     }
     else{
-   
-        const AccessToken = accessTokenMap.get(key).AccessToken
-  
-        await res.json({
-            AccessToken: AccessToken,
-            RefreshToken: 'some refreshToken'
-        }) 
+        if(!accessTokenMap.has(key)){
+            res.status(403)
+            res.json('Your Refresh token has expired')
+        }else{
+            next()
+        }
+        
     }
+}
+
+
+async function refreshingTokens(req,res) {
+
+
+
+    const tokens = generateTokens(guid)
+
+    const hashedRT = hashingString(tokens.RefreshToken)
+
+    const findModel = Model.updateOne({guid:guid}, {RefreshToken:hashedRT}).exec();
+
+    await res.json({
+        AccessToken: tokens.AccessToken,
+        RefreshToken: tokens.RefreshToken
+    }) 
 
 }
 
-module.exports = {refreshTokens:refreshTokens};
+module.exports = {
+    checkingForRefreshTokens:checkingForRefreshTokens,
+    refreshingTokens:refreshingTokens};

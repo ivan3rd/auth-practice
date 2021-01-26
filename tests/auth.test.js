@@ -7,7 +7,7 @@ const generateTokens = require('../routes/util/toGenerateTokens')
 const bcrypt=require('bcryptjs')
 const hashingString = require('../routes/util/hashingString')
 const {v4:uuidv4} =require('uuid');
-    //const ethalon = /^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$/gi
+const findKey = require('../routes/util/findingKeyForATMap')
 
 const secret = process.env.SECRET;
 
@@ -36,12 +36,13 @@ expect.extend({
 expect.extend({
     toBeValidbase64(received,accessToken){
         const findOriginalRefreshToken = (AT)=>{
-            return process.env.RANDOM_SYMBOLS+AT.slice(AT.length-6, AT.length-1)
+            return AT.slice(AT.length-6, AT.length-1)
          }
         const originalString= findOriginalRefreshToken(accessToken)
 
         const buff = new Buffer.from(received,'base64')
-        const decoded =  buff.toString('ascii')
+        let decoded =  buff.toString('ascii')
+        decoded = decoded.slice(decoded.length-5)
 
         if(decoded==originalString){
             return{
@@ -60,6 +61,7 @@ expect.extend({
 
 
 describe('testing utility functions',()=>{
+    
 
     test('checking for GUID',async()=>{
         let guid=''
@@ -92,13 +94,14 @@ describe('testing utility functions',()=>{
 })
 
 const mongoose = require('mongoose')
-const Model = require('../routes/forDB/models')
+const Model = require('../routes/forDB/models');
+const findingKeyForATMap = require('../routes/util/findingKeyForATMap');
 
 describe('testing with connection to the app', ()=>{
     let db;
 
     beforeAll(async ()=>{
-        await mongoose.connect('mongodb://127.0.0.1:3500/jestdb?', 
+        await mongoose.connect(process.env.MONGO_URI , 
         {useNewUrlParser: true, 
         useUnifiedTopology: true});
         
@@ -115,7 +118,7 @@ describe('testing with connection to the app', ()=>{
 
         await mongoose.connection.close()
     })
-
+    
 
  test('testing auth with INvalid GUID',async ()=>{
 
@@ -136,13 +139,11 @@ test('testing auth with valid GUID', async()=>{
     const findModel = Model.findOne({guid:guid}, 'guid RefreshToken').exec();
 
     const foundedModel = await findModel
-    // console.log(foundedModel)
-    // console.log(response.body)
     expect(foundedModel.guid).toBe(guid)
     
 
     const bull = bcrypt.compareSync(response.body.RefreshToken, foundedModel.RefreshToken)
-    // expect(foundedModel.RefreshToken).toBe(response.body.RefreshToken)
+
     expect(bull).toBe(true)
 
 
@@ -165,15 +166,32 @@ test('testing auth with valid GUID', async()=>{
         expect(refresh.body).toBe('Your Refresh token expired or invalid')
     })
 
-    test('checking Refresh with recieved Refresh token',async ()=>{
+    test('checking /refreshTokens with recieved valid Refresh token',async ()=>{
         const RefreshToken = response.body.RefreshToken
   
         const refresh = await request(app).post('/refreshtokens')
         .send({RefreshToken});
         
-
         expect(refresh.statusCode).toBe(200)
-        expect(refresh.body.AccessToken).toBe(response.body.AccessToken)
 
+        expect(refresh.body).toMatchObject({
+            AccessToken: expect.toBeValidJWT(secret),
+            RefreshToken: expect.toBeValidbase64(refresh.body.AccessToken)
+        }) 
+
+        expect(refresh.body.AccessToken).toBe(response.body.AccessToken)
+        expect(refresh.body.RefreshToken).not.toBe(response.body.RefreshToken)
+
+        let key = findingKeyForATMap(response.body.RefreshToken)
+        expect(
+            accessTokenMap.has(key)
+        ).not.toBe(false)
+
+        const findModel = Model.findOne({guid:guid}, 'guid RefreshToken').exec();
+        const foundedModel = await findModel
+        
+        const bull = bcrypt.compareSync(refresh.body.RefreshToken, foundedModel.RefreshToken)
+        expect(bull).toBe(true)
     })
+
 })

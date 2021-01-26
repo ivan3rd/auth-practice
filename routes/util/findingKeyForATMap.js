@@ -4,7 +4,7 @@ const findingKeyForATMap =(RT)=>{
     const buff = new Buffer.from(RT,'base64')
     let decoded =  buff.toString('ascii')
 
-    decoded = decoded.slice(process.env.RANDOM_SYMBOLS.length)
+    decoded = decoded.slice(decoded.length-5)
 
     return decoded
 }

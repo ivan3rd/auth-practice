@@ -3,7 +3,7 @@ const port =process.env.PORT || 5000;
 const mongoose = require('mongoose')
 
 mongoose.connect(
-    'mongodb://127.0.0.1:3500/jestdb?', 
+    MONGO_URI, 
     {useNewUrlParser: true, 
     useUnifiedTopology: true})
 
