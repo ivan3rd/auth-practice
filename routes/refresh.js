@@ -19,10 +19,13 @@ async function checkingForRefreshTokens(req,res,next){
     }
     else{
         if(!accessTokenMap.has(key)){
+
             res.status(403)
             res.json('Your Refresh token has expired')
         }else{
-            next()
+            await accessTokenMap.delete(key)
+            // console.log(accessTokenMap)
+            await next()
         }
         
     }

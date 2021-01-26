@@ -179,13 +179,10 @@ test('testing auth with valid GUID', async()=>{
             RefreshToken: expect.toBeValidbase64(refresh.body.AccessToken)
         }) 
 
-        expect(refresh.body.AccessToken).toBe(response.body.AccessToken)
         expect(refresh.body.RefreshToken).not.toBe(response.body.RefreshToken)
 
         let key = findingKeyForATMap(response.body.RefreshToken)
-        expect(
-            accessTokenMap.has(key)
-        ).not.toBe(false)
+        expect(accessTokenMap.has(key)).toBe(false)
 
         const findModel = Model.findOne({guid:guid}, 'guid RefreshToken').exec();
         const foundedModel = await findModel

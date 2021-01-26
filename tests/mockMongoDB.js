@@ -5,7 +5,6 @@ const mongod = new MongoMemoryServer({
         port:3500,
         ip:'127.0.0.1',
         dbName:'jestdb'
-        //dbPath:'/tmp/mongo-mem-jestdb'
     }
 });
 
@@ -20,11 +19,7 @@ const server = async ()=>{
     console.log(`dbPath is = ${dbPath}`)
     console.log(`process.env.MONGO_URL is ${process.env.MONGO_URL}`)
 
-    // you may check instance status, after you got `uri` it must be `true`
-    // console.log(mongod.getInstanceInfo()); 
     console.log('mockServerHasBeenStarted')
-    
-    //await mongod.stop();
     
 }
 
